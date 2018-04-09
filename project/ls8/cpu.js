@@ -88,6 +88,7 @@ class CPU {
         break;
       case 0b10011001:
         console.log('test');
+        break;
       default:
         console.error(`Error, unknown instruction at PC ${this.reg.PC} : ${IR.toString(2)}`)
         this.stopClock();
