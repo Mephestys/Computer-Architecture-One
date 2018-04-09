@@ -90,7 +90,9 @@ class CPU {
         console.log('test');
         break;
       default:
-        console.error(`Error, unknown instruction at PC ${this.reg.PC} : ${IR.toString(2)}`)
+        let instError = IR.toString(2);
+        instError = '00000000'.substr(instError.length) + instError;
+        console.error(`Error, unknown instruction at PC ${this.reg.PC} : ${instError}`)
         this.stopClock();
         break;
     }
