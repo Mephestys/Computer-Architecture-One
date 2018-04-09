@@ -55,7 +55,7 @@ class CPU {
   alu(op, regA, regB) {
     switch (op) {
       case 'MUL':
-        // !!! IMPLEMENT ME
+        this.reg[regA] *= this.reg[regB];
         break;
     }
   }
@@ -91,6 +91,9 @@ class CPU {
         break;
       case 0b01000011:
         console.log(this.reg[operandA]);
+        break;
+      case 0b10101010:
+        this.alu('MUL', operandA, operandB);
         break;
       default:
         let instError = IR.toString(2);
