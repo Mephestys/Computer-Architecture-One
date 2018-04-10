@@ -8,26 +8,24 @@ const CPU = require('./cpu');
  * TODO: load this from a file on disk instead of having it hardcoded
  */
 
-//console.log(process.argv[2]);
-const fileTest = fs.readFileSync(`./${process.argv[2]}`, {encoding: 'utf8'});
-console.log(fileTest);
-
 function loadMemory() {
+  const program = [];
+  let loadFile = fs.readFileSync(`./${process.argv[2]}`, {encoding: 'utf-8'});
+  loadFile = loadFile.split('\n');
 
-  // Hardcoded program to print the number 8 on the console
+  for (let line of loadFile) {
+    const comment = line.indexOf('#');
 
-  const program = [ // print8.ls8
-    "10011001", // LDI R0,8  Store 8 into R0
-    "00000000", // R0         OperandA for LDI instruction
-    "00001000", // 8          OperandB for LDI instruction
-    "01000011", // PRN R0    Print the value in R0
-    "00000000", // R0         OperandA for PRN instruction
-    "00000001"  // HLT       Halt and quit
-  ];
+    if (comment != -1) {
+      line = line.substr(0, comment);
+    }
+    line = line.trim();
 
-// function loadProgram(file, cpu) {
-
-// }
+    if (line === '') {
+      continue;
+    }
+    program.push(line);
+  }
 
   // Load the program into the CPU's memory a byte at a time
   for (let i = 0; i < program.length; i++) {
