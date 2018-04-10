@@ -7,6 +7,11 @@ const CPU = require('./cpu');
  *
  * TODO: load this from a file on disk instead of having it hardcoded
  */
+
+//console.log(process.argv[2]);
+const fileTest = fs.readFileSync(`./${process.argv[2]}`, {encoding: 'utf8'});
+console.log(fileTest);
+
 function loadMemory() {
 
   // Hardcoded program to print the number 8 on the console
