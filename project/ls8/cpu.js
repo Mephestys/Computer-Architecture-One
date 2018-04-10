@@ -2,9 +2,6 @@
  * LS-8 v2.0 emulator skeleton code
  */
 
- /* Imports */
- const fs = require('fs');
-
  /* Instructions */
  const ADD  = 0b10101000; // ADD R R
  const AND  = 0b10110011; // AND R R
