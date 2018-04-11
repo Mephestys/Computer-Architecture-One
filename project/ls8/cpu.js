@@ -90,6 +90,7 @@ class CPU {
         this.reg[regA] *= this.reg[regB];
         break;
       case 'ADD':
+        this.reg[regA] += this.reg[regB];
         break;
     }
   }
@@ -129,6 +130,9 @@ class CPU {
       case MUL:
         this.alu('MUL', operandA, operandB);
         break;
+      case ADD:
+        this.alu('ADD', operandA, operandB);
+        break;
       case PUSH:
         this.reg[7]--;
         this.ram.write(this.reg[7], this.reg[operandA]);
@@ -136,6 +140,15 @@ class CPU {
       case POP:
         this.reg[operandA] = this.ram.read(this.reg[7]);
         this.reg[7]++;
+        break;
+      case CALL:
+        this.reg[7]--;
+        this.ram.write(this.reg[7], this.reg.PC + 2);
+        this.reg.PC = this.reg[operandA];
+        break;
+      case RET:
+        this.reg.PC = this.ram.read(this.reg[7]);
+        return this.ram.read(this.reg[7]);
         break;
       default:
         let instError = IR.toString(2);

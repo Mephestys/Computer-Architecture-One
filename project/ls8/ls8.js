@@ -28,6 +28,7 @@ function loadMemory() {
   for (let i = 0; i < program.length; i++) {
     cpu.poke(i, parseInt(program[i], 2));
   }
+  // console.log(program);
 }
 
 /**
