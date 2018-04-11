@@ -89,6 +89,8 @@ class CPU {
       case 'MUL':
         this.reg[regA] *= this.reg[regB];
         break;
+      case 'ADD':
+        break;
     }
   }
 
@@ -126,6 +128,14 @@ class CPU {
         break;
       case MUL:
         this.alu('MUL', operandA, operandB);
+        break;
+      case PUSH:
+        this.reg[7]--;
+        this.ram.write(this.reg[7], this.reg[operandA]);
+        break;
+      case POP:
+        this.reg[operandA] = this.ram.read(this.reg[7]);
+        this.reg[7]++;
         break;
       default:
         let instError = IR.toString(2);
