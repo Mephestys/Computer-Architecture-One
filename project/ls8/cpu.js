@@ -34,7 +34,15 @@
  const SUB  = 0b10101001; // SUB R R
  const XOR  = 0b10110010; // XOR R R
 
- const SP = 7 // Stack pointer
+ const IM = 0x05; // Interrupt mask register R5
+ const SP = 0x07 // Stack pointer R7
+
+ const interruptMask = (0x1 << 0) // timer interrupt mask
+
+ // Flags for FL register
+ const FLAG_E = 0; // Equal
+ const FLAG_G = 1; // Greater-than
+ const FLAT_L = 2; // Less-than
 
 /**
  * Class for simulating a simple Computer (CPU & memory)
@@ -51,6 +59,9 @@ class CPU {
     
     // Special-purpose registers
     this.reg.PC = 0; // Program Counter
+    this.reg.FL = 0; // Flag
+
+    this.reg[SP] = 0xf4;
   }
 	
   /**
