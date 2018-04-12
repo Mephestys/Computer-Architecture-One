@@ -34,6 +34,8 @@
  const SUB  = 0b10101001; // SUB R R
  const XOR  = 0b10110010; // XOR R R
 
+ const SP = 7 // Stack pointer
+
 /**
  * Class for simulating a simple Computer (CPU & memory)
  */
@@ -134,21 +136,21 @@ class CPU {
         this.alu('ADD', operandA, operandB);
         break;
       case PUSH:
-        this.reg[7]--;
-        this.ram.write(this.reg[7], this.reg[operandA]);
+        this.reg[SP]--;
+        this.ram.write(this.reg[SP], this.reg[operandA]);
         break;
       case POP:
-        this.reg[operandA] = this.ram.read(this.reg[7]);
-        this.reg[7]++;
+        this.reg[operandA] = this.ram.read(this.reg[SP]);
+        this.reg[SP]++;
         break;
       case CALL:
-        this.reg[7]--;
-        this.ram.write(this.reg[7], this.reg.PC + 2);
+        this.reg[SP]--;
+        this.ram.write(this.reg[SP], this.reg.PC + 2);
         this.reg.PC = this.reg[operandA];
         break;
       case RET:
-        this.reg.PC = this.ram.read(this.reg[7]);
-        return this.ram.read(this.reg[7]);
+        this.reg.PC = this.ram.read(this.reg[SP]);
+        return this.ram.read(this.reg[SP]);
         break;
       default:
         let instError = IR.toString(2);
