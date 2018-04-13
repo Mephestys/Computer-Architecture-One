@@ -34,15 +34,21 @@
  const SUB  = 0b10101001; // SUB R R
  const XOR  = 0b10110010; // XOR R R
 
- const IM = 0x05; // Interrupt mask register R5
- const SP = 0x07 // Stack pointer R7
+ const FL = 4;
+ const IM = 5;
+ const IS = 6;
+ const SP = 7;
 
- const interruptMask = (0x1 << 0) // timer interrupt mask
-
- // Flags for FL register
  const FLAG_E = 0; // Equal
  const FLAG_G = 1; // Greater-than
  const FLAT_L = 2; // Less-than
+
+ const vecTableStart = 0xF8;
+
+ const intMask = [
+   (0x1 << 0), // timer
+   (0x1 << 1), // keyboard
+ ];
 
 /**
  * Class for simulating a simple Computer (CPU & memory)
@@ -60,8 +66,12 @@ class CPU {
     // Special-purpose registers
     this.reg.PC = 0; // Program Counter
     this.reg.FL = 0; // Flag
+    this.reg.IR = 0;
 
     this.reg[SP] = 0xf4;
+
+    this.busy = false;
+    this.interruptsEnabled = true;
   }
 	
   /**
@@ -71,6 +81,10 @@ class CPU {
     this.ram.write(address, value);
   }
 
+  raiseInterrupt(n) {
+    this.reg[IS] |= intMask[n];
+  }
+
   /**
    * Starts the clock ticking on the CPU
    */
@@ -78,6 +92,18 @@ class CPU {
     this.clock = setInterval(() => {
       this.tick();
     }, 1); // 1 ms delay == 1 KHz clock == 0.000001 GHz
+
+    this.interruptTimer = setInterval(() => {
+      this.raiseInterrupt(0);
+    }, 1000);
+  }
+
+  setFlag(flag) {
+    this.reg.FL = 0b1 << flag;
+  }
+
+  checkFlag(flag) {
+    return (this.reg.FL & (0b1 << flag)) !== 0;
   }
 
   /**
@@ -85,6 +111,7 @@ class CPU {
    */
   stopClock() {
     clearInterval(this.clock);
+    clearInterval(this.interruptTimer);
   }
 
   /**
@@ -99,11 +126,53 @@ class CPU {
    */
   alu(op, regA, regB) {
     switch (op) {
+      case 'ADD':
+        this.reg[regA] += this.reg[regB];
+        break;
+      case 'AND':
+        this.reg[regA] &= this.reg[regB];
+        break;
+      case 'CMP':
+        if (this.reg[regA] > this.reg[regB]) this.setFlag(FLAG_G);
+        if (this.reg[regA] < this.reg[regB]) this.setFlag(FLAG_L);
+        if (this.reg[regA] === this.reg[regB]) this.setFlag(FLAG_E);
+        break;
+      case 'DEC':
+        this.reg[regA] -= 1;
+        break;
+      case 'DIV':
+        if (this.reg[regB] === 0) {
+          console.error('Cannot divide by zero');
+          this.stopClock();
+        } else {
+        this.reg[regA] /= this.reg[regB];
+        }
+        break;
+      case 'INC':
+        this.reg[regA] += 1;
+        break;
+      case 'MOD':
+        if (this.reg[regB] === 0) {
+          console.error('Cannot divide by zero');
+          this.stopClock();
+        } else {
+        this.reg[regA] %= this.reg[regB];
+        }
+        break;
       case 'MUL':
         this.reg[regA] *= this.reg[regB];
         break;
-      case 'ADD':
-        this.reg[regA] += this.reg[regB];
+      case 'NOT':
+        this.reg[regA] = ~this.reg[regA]
+        break;
+      case 'OR':
+        this.reg[regA] |= this.reg[regB];
+        break;
+      case 'SUB':
+        this.reg[regA] -= this.reg[regB];
+        break;
+      case 'XOR':
+        this.reg[regA] ^= this.reg[regB];
         break;
     }
   }
@@ -112,11 +181,42 @@ class CPU {
    * Advances the CPU one cycle
    */
   tick() {
+
+    const _push = item => {
+      this.alu('DEC', SP);
+      this.ram.write(this.reg[SP], item);
+    }
+
+    const _pop = () => {
+      const value = this.ram.read(this.reg[SP]);
+      this.alu('INC', SP);
+      return value;
+    }
+
+    if (this.interruptsEnabled) {
+      const maskedInts = this.reg[IS] & this.reg[IM];
+
+      for (let i = 0; i < 8; i++) {
+        if (((maskedInts >> i) & 0x01) === 1) {
+          this.interruptsEnabled = false;
+
+          this.reg[IS] &= ~intMask[i];
+          _push(this.reg.PC);
+          _push(this.reg.FL);
+          for (let r = 0; r <= 6; r++) {
+            _push(this.reg[r]);
+          }
+          const vec = this.ram.read(vecTableStart + i);
+          this.reg.PC = vec;
+          break;
+        }
+      }
+    }
     // Load the instruction register (IR--can just be a local variable here)
     // from the memory address pointed to by the PC. (I.e. the PC holds the
     // index into memory of the instruction that's about to be executed
     // right now.)
-    const IR = this.ram.read(this.reg.PC);
+    this.reg.IR = this.ram.read(this.reg.PC);
 
     // Debugging output
     // console.log(`${this.reg.PC}: ${IR.toString(2)}`);
@@ -130,7 +230,18 @@ class CPU {
     // Execute the instruction. Perform the actions for the instruction as
     // outlined in the LS-8 spec.
 
-    switch(IR) {
+    switch(this.reg.IR) {
+      case ADD:
+        this.alu('ADD', operandA, operandB);
+        break;
+      case AND:
+        this.alu('AND', operandA, operandB);
+        break;
+      case CALL:
+        _push(this.reg.PC + 2);
+        this.reg.PC = this.reg[operandA];
+        this.busy = true;
+        break;
       case HLT:
         this.stopClock();
         break;
@@ -143,9 +254,6 @@ class CPU {
       case MUL:
         this.alu('MUL', operandA, operandB);
         break;
-      case ADD:
-        this.alu('ADD', operandA, operandB);
-        break;
       case PUSH:
         this.reg[SP]--;
         this.ram.write(this.reg[SP], this.reg[operandA]);
@@ -154,17 +262,33 @@ class CPU {
         this.reg[operandA] = this.ram.read(this.reg[SP]);
         this.reg[SP]++;
         break;
-      case CALL:
-        this.reg[SP]--;
-        this.ram.write(this.reg[SP], this.reg.PC + 2);
-        this.reg.PC = this.reg[operandA];
-        break;
       case RET:
         this.reg.PC = this.ram.read(this.reg[SP]);
         return this.ram.read(this.reg[SP]);
         break;
+      case IRET:
+        for (let r = 6; r >= 0; r--) {
+          this.reg[r] = _pop();
+        }
+        this.reg.FL = _pop();
+        this.reg.PC = _pop();
+        this.busy = true;
+        this.interruptsEnabled = true;
+        break;
+      case ST:
+        this.ram.write(this.reg[operandA], this.reg[operandB]);
+        break;
+      case JMP:
+        this.reg.PC = this.reg[operandA];
+        this.busy = true;
+        break;
+      case PRA:
+        console.log(String.fromCharCode(this.reg[operandA]));
+        break;
+      case NOP:
+        break;
       default:
-        let instError = IR.toString(2);
+        let instError = this.reg.IR.toString(2);
         instError = '00000000'.substr(instError.length) + instError;
         console.error(`Error, unknown instruction at PC ${this.reg.PC} : ${instError}`)
         this.stopClock();
@@ -176,9 +300,10 @@ class CPU {
     // instruction byte tells you how many bytes follow the instruction byte
     // for any particular instruction.
     
-    if (IR !== CALL && IR !== RET) {
-      this.reg.PC += (IR >>> 6) + 1;
+    if (!this.busy) {
+      this.reg.PC += (this.reg.IR >>> 6) + 1;
     }
+    this.busy = false;
   }
 }
 
